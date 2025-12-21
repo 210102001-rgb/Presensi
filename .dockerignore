@@ -1,0 +1,86 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+*.md
+docs/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Laravel specific
+/node_modules
+/public/hot
+/public/storage
+/storage/*.key
+/vendor
+.env
+.env.backup
+.env.production
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+auth.json
+npm-debug.log
+yarn-error.log
+
+# Build artifacts
+/public/build
+/public/mix-manifest.json
+
+# Testing
+/tests
+phpunit.xml
+.phpunit.cache
+
+# Development tools
+docker-compose.override.yml
+docker-compose.dev.yml
+
+# Logs
+/storage/logs/*.log
+laravel.log
+
+# Cache
+/bootstrap/cache/*.php
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# Database files (will be mounted as volumes)
+/database/database.sqlite
+/database/*.sqlite
+
+# Uploaded files (will be mounted as volumes)
+/storage/app/public/*
+
+# Package manager files (keep the ones needed for build)
+yarn.lock
+# Note: package-lock.json and composer.lock are needed for Docker build
+
+# Docker files (avoid recursive copying)
+Dockerfile*
+docker-compose*.yml
+.dockerignore

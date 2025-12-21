@@ -1,0 +1,257 @@
+-- Database Schema untuk Sistem Presensi Pengajar
+-- Laravel + Inertia + Vue + Leaflet JS
+-- Database: presensi_pengajar
+
+CREATE DATABASE IF NOT EXISTS presensi_pengajar;
+USE presensi_pengajar;
+
+-- ============================================
+-- TABEL UTAMA
+-- ============================================
+
+-- Table: users (untuk admin dan pengajar)
+CREATE TABLE users (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    nip VARCHAR(50) UNIQUE NULL COMMENT 'Nomor Induk Pengajar',
+    email_verified_at TIMESTAMP NULL,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('admin', 'pengajar') DEFAULT 'pengajar',
+    phone VARCHAR(20) NULL,
+    subject VARCHAR(255) NULL COMMENT 'Mata pelajaran yang diampu',
+    address TEXT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    remember_token VARCHAR(100) NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_users_role (role),
+    INDEX idx_users_email (email),
+    INDEX idx_users_nip (nip)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: locations (lokasi presensi)
+CREATE TABLE locations (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL COMMENT 'Nama ruangan/lokasi',
+    description TEXT NULL,
+    latitude DECIMAL(10, 8) NOT NULL,
+    longitude DECIMAL(11, 8) NOT NULL,
+    radius INTEGER DEFAULT 50 COMMENT 'Radius validasi dalam meter',
+    address TEXT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by BIGINT UNSIGNED NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_locations_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: schedules (jadwal mengajar tetap/recurring)
+CREATE TABLE schedules (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    teacher_id BIGINT UNSIGNED NOT NULL,
+    location_id BIGINT UNSIGNED NOT NULL,
+    subject VARCHAR(255) NOT NULL COMMENT 'Mata pelajaran',
+    class VARCHAR(100) NOT NULL COMMENT 'Kelas yang diajar',
+    day ENUM('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday') NOT NULL,
+    start_time TIME NOT NULL COMMENT 'Jam mulai',
+    end_time TIME NOT NULL COMMENT 'Jam selesai',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE CASCADE,
+    INDEX idx_schedules_teacher (teacher_id),
+    INDEX idx_schedules_location (location_id),
+    INDEX idx_schedules_day (day),
+    INDEX idx_schedules_teacher_day (teacher_id, day)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: attendances (record presensi harian)
+CREATE TABLE attendances (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    teacher_id BIGINT UNSIGNED NOT NULL,
+    schedule_id BIGINT UNSIGNED NOT NULL,
+    date DATE NOT NULL COMMENT 'Tanggal presensi',
+    check_in_time TIME NULL,
+    check_out_time TIME NULL,
+    check_in_latitude DECIMAL(10, 8) NULL,
+    check_in_longitude DECIMAL(11, 8) NULL,
+    check_out_latitude DECIMAL(10, 8) NULL,
+    check_out_longitude DECIMAL(11, 8) NULL,
+    status ENUM('hadir', 'terlambat', 'izin', 'alpha') DEFAULT 'alpha',
+    notes TEXT NULL,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (schedule_id) REFERENCES schedules(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_teacher_schedule_date (teacher_id, schedule_id, date),
+    INDEX idx_attendances_teacher (teacher_id),
+    INDEX idx_attendances_schedule (schedule_id),
+    INDEX idx_attendances_date (date),
+    INDEX idx_attendances_status (status),
+    INDEX idx_attendances_teacher_date (teacher_id, date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- TABEL LARAVEL STANDARD
+-- ============================================
+
+-- Table: migrations (Laravel migration tracking)
+CREATE TABLE migrations (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    migration VARCHAR(255) NOT NULL,
+    batch INT NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: password_reset_tokens (Laravel 10+)
+CREATE TABLE password_reset_tokens (
+    email VARCHAR(255) PRIMARY KEY,
+    token VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: sessions (Laravel session storage)
+CREATE TABLE sessions (
+    id VARCHAR(255) PRIMARY KEY,
+    user_id BIGINT UNSIGNED NULL,
+    ip_address VARCHAR(45) NULL,
+    user_agent TEXT NULL,
+    payload LONGTEXT NOT NULL,
+    last_activity INT NOT NULL,
+    INDEX sessions_user_id_index (user_id),
+    INDEX sessions_last_activity_index (last_activity)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- SAMPLE DATA
+-- ============================================
+
+-- Insert Users (Password: password)
+INSERT INTO users (name, email, nip, password, role, phone, subject) VALUES
+('Admin System', 'admin@presensi.test', NULL, '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', '081234567890', NULL),
+('Dr. Budi Santoso', 'budi@presensi.test', '198501012010011001', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'pengajar', '081234567891', 'Matematika'),
+('Prof. Siti Nurhaliza', 'siti@presensi.test', '198502022010012002', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'pengajar', '081234567892', 'Fisika'),
+('Drs. Ahmad Dahlan', 'ahmad@presensi.test', '198503032010013003', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'pengajar', '081234567893', 'Bahasa Indonesia');
+
+-- Insert Locations (Koordinat Surakarta, Indonesia)
+INSERT INTO locations (name, description, latitude, longitude, radius, address, created_by) VALUES
+('Ruang Kelas A101', 'Ruang kelas lantai 1 gedung A untuk kelas reguler', -7.5569954, 110.8242586, 30, 'Gedung A Lantai 1, Jl. Slamet Riyadi No.1, Surakarta', 2),
+('Ruang Kelas B201', 'Ruang kelas lantai 2 gedung B', -7.5571954, 110.8244586, 30, 'Gedung B Lantai 2, Jl. Slamet Riyadi No.1, Surakarta', 2),
+('Lab Komputer', 'Laboratorium komputer dengan 40 unit PC', -7.5570954, 110.8243586, 25, 'Gedung B Lantai 2, Jl. Slamet Riyadi No.1, Surakarta', 2),
+('Lab Fisika', 'Laboratorium fisika dan praktikum', -7.5572954, 110.8245586, 25, 'Gedung C Lantai 1, Jl. Slamet Riyadi No.1, Surakarta', 3),
+('Aula Utama', 'Aula besar untuk pertemuan dan seminar', -7.5568954, 110.8246586, 50, 'Gedung D, Jl. Slamet Riyadi No.1, Surakarta', 2),
+('Perpustakaan', 'Perpustakaan pusat sekolah', -7.5573954, 110.8247586, 40, 'Gedung E Lantai 1-2, Jl. Slamet Riyadi No.1, Surakarta', 2);
+
+-- Insert Schedules (Jadwal Mengajar Tetap)
+INSERT INTO schedules (teacher_id, location_id, subject, class, day, start_time, end_time) VALUES
+-- Senin
+(2, 1, 'Matematika Dasar', '10A', 'Monday', '08:00:00', '09:30:00'),
+(2, 1, 'Kalkulus', '11B', 'Monday', '10:00:00', '11:30:00'),
+(3, 4, 'Fisika Dasar', '10A', 'Monday', '13:00:00', '14:30:00'),
+(4, 2, 'Bahasa Indonesia', '10B', 'Monday', '08:00:00', '09:30:00'),
+
+-- Selasa
+(2, 3, 'Aljabar Linear', '12A', 'Tuesday', '08:00:00', '09:30:00'),
+(3, 1, 'Fisika Lanjut', '11A', 'Tuesday', '10:00:00', '11:30:00'),
+(4, 2, 'Sastra Indonesia', '11B', 'Tuesday', '13:00:00', '14:30:00'),
+
+-- Rabu
+(2, 1, 'Matematika Dasar', '10A', 'Wednesday', '08:00:00', '09:30:00'),
+(3, 4, 'Praktikum Fisika', '10A', 'Wednesday', '10:00:00', '12:00:00'),
+(4, 2, 'Tata Bahasa', '12A', 'Wednesday', '13:00:00', '14:30:00'),
+
+-- Kamis
+(2, 1, 'Kalkulus', '11B', 'Thursday', '08:00:00', '09:30:00'),
+(3, 1, 'Fisika Kuantum', '12A', 'Thursday', '10:00:00', '11:30:00'),
+(4, 5, 'Seminar Literasi', '10A', 'Thursday', '13:00:00', '15:00:00'),
+
+-- Jumat
+(2, 1, 'Matematika Diskrit', '11A', 'Friday', '08:00:00', '09:30:00'),
+(3, 4, 'Lab Fisika Modern', '12A', 'Friday', '10:00:00', '12:00:00'),
+(4, 2, 'Bahasa Indonesia', '10A', 'Friday', '13:00:00', '14:30:00');
+
+-- Insert Attendances (Sample presensi minggu ini)
+INSERT INTO attendances (teacher_id, schedule_id, date, check_in_time, check_out_time, check_in_latitude, check_in_longitude, check_out_latitude, check_out_longitude, status, notes) VALUES
+-- Senin 13 Oktober 2025
+(2, 1, '2025-10-13', '07:58:00', '09:32:00', -7.5569954, 110.8242586, -7.5569954, 110.8242586, 'hadir', 'Tepat waktu'),
+(2, 2, '2025-10-13', '10:05:00', '11:35:00', -7.5569954, 110.8242586, -7.5569954, 110.8242586, 'terlambat', 'Terlambat 5 menit'),
+(3, 3, '2025-10-13', '12:58:00', '14:32:00', -7.5572954, 110.8245586, -7.5572954, 110.8245586, 'hadir', NULL),
+(4, 4, '2025-10-13', '08:00:00', '09:28:00', -7.5571954, 110.8244586, -7.5571954, 110.8244586, 'hadir', NULL),
+
+-- Selasa 14 Oktober 2025
+(2, 5, '2025-10-14', '07:55:00', '09:33:00', -7.5570954, 110.8243586, -7.5570954, 110.8243586, 'hadir', NULL),
+(3, 6, '2025-10-14', '10:02:00', '11:28:00', -7.5569954, 110.8242586, -7.5569954, 110.8242586, 'terlambat', NULL),
+(4, 7, '2025-10-14', '13:00:00', '14:35:00', -7.5571954, 110.8244586, -7.5571954, 110.8244586, 'hadir', NULL),
+
+-- Rabu 15 Oktober 2025
+(2, 8, '2025-10-15', '08:01:00', '09:29:00', -7.5569954, 110.8242586, -7.5569954, 110.8242586, 'hadir', NULL),
+(3, 9, '2025-10-15', '10:05:00', NULL, -7.5572954, 110.8245586, NULL, NULL, 'hadir', 'Sedang mengajar'),
+(4, 10, '2025-10-15', NULL, NULL, NULL, NULL, NULL, NULL, 'alpha', 'Tidak hadir tanpa keterangan');
+
+-- ============================================
+-- USEFUL QUERIES
+-- ============================================
+
+-- Query 1: Lihat jadwal hari ini untuk semua pengajar
+-- SELECT 
+--     u.name as pengajar,
+--     s.subject,
+--     s.class,
+--     s.start_time,
+--     s.end_time,
+--     l.name as lokasi,
+--     l.address
+-- FROM schedules s
+-- JOIN users u ON s.teacher_id = u.id
+-- JOIN locations l ON s.location_id = l.id
+-- WHERE s.day = DAYNAME(CURDATE())
+-- AND s.is_active = TRUE
+-- ORDER BY s.start_time;
+
+-- Query 2: Lihat status presensi hari ini
+-- SELECT 
+--     u.name as pengajar,
+--     s.subject,
+--     s.class,
+--     s.start_time,
+--     a.check_in_time,
+--     a.status,
+--     CASE 
+--         WHEN a.check_in_time IS NULL THEN 'Belum Presensi'
+--         WHEN a.check_in_time > s.start_time THEN 'Terlambat'
+--         ELSE 'Tepat Waktu'
+--     END as keterangan
+-- FROM schedules s
+-- JOIN users u ON s.teacher_id = u.id
+-- LEFT JOIN attendances a ON s.id = a.schedule_id AND a.date = CURDATE()
+-- WHERE s.day = DAYNAME(CURDATE())
+-- ORDER BY s.start_time;
+
+-- Query 3: Laporan presensi per pengajar (minggu ini)
+-- SELECT 
+--     u.name as pengajar,
+--     COUNT(a.id) as total_presensi,
+--     SUM(CASE WHEN a.status = 'hadir' THEN 1 ELSE 0 END) as hadir,
+--     SUM(CASE WHEN a.status = 'terlambat' THEN 1 ELSE 0 END) as terlambat,
+--     SUM(CASE WHEN a.status = 'izin' THEN 1 ELSE 0 END) as izin,
+--     SUM(CASE WHEN a.status = 'alpha' THEN 1 ELSE 0 END) as alpha
+-- FROM users u
+-- LEFT JOIN attendances a ON u.id = a.teacher_id 
+--     AND a.date >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)
+-- WHERE u.role = 'pengajar'
+-- GROUP BY u.id
+-- ORDER BY u.name;
+
+-- Query 4: Lokasi yang paling sering digunakan
+-- SELECT 
+--     l.name,
+--     l.address,
+--     COUNT(s.id) as jumlah_jadwal,
+--     l.radius
+-- FROM locations l
+-- LEFT JOIN schedules s ON l.id = s.location_id
+-- WHERE l.is_active = TRUE
+-- GROUP BY l.id
+-- ORDER BY jumlah_jadwal DESC;

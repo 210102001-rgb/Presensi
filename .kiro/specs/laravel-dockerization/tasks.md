@@ -11,7 +11,9 @@
   - Configure PHP-FPM and Nginx for production-ready web server setup
   - _Requirements: 1.1, 2.1, 5.3_
 
-- [ ]* 1.1 Write property test for container build completeness
+- [ ] 1.1 Write property test for container build completeness
+
+
   - **Property 1: Container Build Completeness**
   - **Validates: Requirements 1.1, 2.3, 2.4**
 

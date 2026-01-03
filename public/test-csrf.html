@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSRF Token Test</title>
+    <meta name="csrf-token" content="">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>CSRF Token Test</h1>
+    <button onclick="getCSRFToken()">Get CSRF Token</button>
+    <button onclick="testCSRF()">Test CSRF</button>
+    <div id="result"></div>
+
+    <script>
+        // Set axios defaults
+        axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+        
+        async function getCSRFToken() {
+            try {
+                const response = await axios.get('/csrf-token');
+                const token = response.data.csrf_token;
+                document.querySelector('meta[name="csrf-token"]').content = token;
+                axios.defaults.headers.common['X-CSRF-TOKEN'] = token;
+                document.getElementById('result').innerHTML = 'CSRF Token: ' + token;
+            } catch (error) {
+                document.getElementById('result').innerHTML = 'Error: ' + error.message;
+            }
+        }
+        
+        async function testCSRF() {
+            try {
+                const formData = new FormData();
+                formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+                
+                const response = await axios.post('/test-csrf', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                });
+                
+                document.getElementById('result').innerHTML = 'Success: ' + JSON.stringify(response.data);
+            } catch (error) {
+                document.getElementById('result').innerHTML = 'Error: ' + error.response?.data?.message || error.message;
+            }
+        }
+    </script>
+</body>
+</html>
